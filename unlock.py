@@ -1,25 +1,42 @@
 from pynput import mouse
+from datetime import datetime
+from threading import Thread
+import time
+
+max_static_time = 300
+
+update_loc_time_stack = [(None, None)]
+
 
 def on_move(x, y):
-    print('Pointer moved to {0}'.format(
-        (x, y)))
+    now_loc = (x, y)
+    update_loc_time_stack[0] = (now_loc, datetime.now())
 
-def on_click(x, y, button, pressed):
-    print('{0} at {1}'.format(
-        'Pressed' if pressed else 'Released',
-        (x, y)))
-    if not pressed:
-        # Stop listener
-        return False
 
-def on_scroll(x, y, dx, dy):
-    print('Scrolled {0} at {1}'.format(
-        'down' if dy < 0 else 'up',
-        (x, y)))
+def check_log():
+    while True:
 
-# Collect events until released
-with mouse.Listener(
-        on_move=on_move,
-        on_click=on_click,
-        on_scroll=on_scroll) as listener:
-    listener.join()
+        loc, update_time = update_loc_time_stack[0]
+        if loc is None:
+            continue
+        now = datetime.now()
+        check_duration = (now - update_time).total_seconds()
+        if check_duration > max_static_time:
+            print("you did not move for a while, move cursor for you")
+            mouse_control = mouse.Controller()
+            mouse_control.move(-1, -1)
+        else:
+            print("you move the cursor {} secs ago".format(check_duration))
+        time.sleep(1)
+
+
+def main():
+    checker = Thread(target=check_log, )
+    checker.setDaemon(True)
+    checker.start()
+    with mouse.Listener(on_move=on_move) as listener:
+        listener.join()
+
+
+if __name__ == "__main__":
+    main()
